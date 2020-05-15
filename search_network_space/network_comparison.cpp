@@ -5,6 +5,8 @@
 #include <emmintrin.h>
 #include <immintrin.h>
 #include <time.h>
+#include <algorithm>
+#include <vector>
 #include <sys/mman.h>
 
 #define ASSERT(x) \
@@ -646,22 +648,24 @@ void test_all_encodings() {
 }
 
 void benchmark_all_encodings() {
-    const size_t size_MiB = 1;
-    const size_t num_bytes = size_MiB * 1024 * 1024;
-    const size_t num_runs = 4096;
-    printf("Testing %zu MiB.\n", size_MiB);
+    const size_t max_num_bytes = 32 * 1024 * 1024;
+    const size_t num_runs = 256;
     printf("Averaging over %zu runs.\n", num_runs);
-    uint8_t *input = (uint8_t*)malloc(num_bytes);
-    uint8_t *output = (uint8_t*)malloc(num_bytes);
+    uint8_t *input = (uint8_t*)malloc(max_num_bytes);
+    uint8_t *output = (uint8_t*)malloc(max_num_bytes);
     srand(1337);
-    for (size_t i = 0; i < num_bytes; ++i) {
+    for (size_t i = 0; i < max_num_bytes; ++i) {
         input[i] = (uint8_t)rand();
     }
-    for (size_t i = RnStart; i < RnEnd; ++i) {
-        RunName name = (RunName)i;
-        const char *name_s = CovertRnNameToString(name);
-        double avg_gibs_per_s = benchmark_path(name, input, num_bytes, output, num_runs);
-        printf("%s: %lf GiB/s\n", name_s, avg_gibs_per_s);
+    for (size_t num_kbytes: std::vector<size_t>({32,64,96,128,196,256,512,768,1024,2048,4096,8*1024,12*1024,16*1024, 20*1024, 24*1024,32*1024})) {
+        const size_t num_bytes = std::min(num_kbytes*1024, max_num_bytes);
+        printf("Testing %zu KiB.\n", num_bytes/1024);
+        for (size_t i = RnStart; i < RnEnd; ++i) {
+            const RunName name = (RunName)i;
+            const char *name_s = CovertRnNameToString(name);
+            double avg_gibs_per_s = benchmark_path(name, input, num_bytes, output, num_runs);
+            printf("%s: %lf GiB/s\n", name_s, avg_gibs_per_s);
+        }
     }
     free(input);
     free(output);
