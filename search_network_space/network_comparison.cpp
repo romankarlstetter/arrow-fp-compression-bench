@@ -30,10 +30,12 @@ enum RunName {
     RnDecodeSimdFloat,
     RnEncodeSimdDouble,
     RnDecodeSimdDouble,
+#ifdef __AVX2__
     RnEncodeAVX2Float,
     RnDecodeAVX2Float,
     RnEncodeAVX2Double,
     RnDecodeAVX2Double,
+#endif
     RnEnd,
 
 };
@@ -58,6 +60,7 @@ const char* CovertRnNameToString(RunName name) {
             return "encode_simd_double";
         case RnDecodeSimdDouble:
             return "decode_simd_double";
+#ifdef __AVX2__
         case RnEncodeAVX2Float:
             return "encode_avx2_float";
         case RnDecodeAVX2Float:
@@ -66,6 +69,7 @@ const char* CovertRnNameToString(RunName name) {
             return "encode_avx2_double";
         case RnDecodeAVX2Double:
             return "decode_avx2_double";
+#endif
         default:
             ASSERT(!"Unknown name");
             return NULL;
@@ -276,6 +280,7 @@ void decode_simd_double(const uint8_t *input_data, size_t num_elements, uint8_t 
     }
 }
 
+#ifdef __AVX2__
 void encode_avx2_float(const uint8_t *input_data, size_t num_elements, uint8_t *output_data) {
     // We will not handle the special case here and assume size is divisble 32 * 4.
     __m256i s[4];
@@ -471,6 +476,7 @@ void decode_avx2_double(const uint8_t *input_data, size_t num_elements, uint8_t 
         _mm256_storeu_si256((__m256i*)(output_data + off + 224UL), p[7]);
     }
 }
+#endif
 
 double benchmark_path(RunName name, const uint8_t *input, size_t num_bytes, uint8_t *output, const size_t num_runs)
 {
@@ -480,16 +486,20 @@ double benchmark_path(RunName name, const uint8_t *input, size_t num_bytes, uint
         case RnDecodeScalarFloat:
         case RnEncodeSimdFloat:
         case RnDecodeSimdFloat:
+#ifdef __AVX2__
         case RnEncodeAVX2Float:
         case RnDecodeAVX2Float:
+#endif
             num_elements = num_bytes / 4UL;
             break;
         case RnEncodeScalarDouble:
         case RnDecodeScalarDouble:
         case RnEncodeSimdDouble:
         case RnDecodeSimdDouble:
+#ifdef __AVX2__
         case RnEncodeAVX2Double:
         case RnDecodeAVX2Double:
+#endif
             num_elements = num_bytes / 8UL;
             break;
         case RnMemcpy:
@@ -533,6 +543,7 @@ double benchmark_path(RunName name, const uint8_t *input, size_t num_bytes, uint
             case RnDecodeSimdDouble:
                 decode_simd_double(input, num_elements, output);
                 break;
+#ifdef __AVX2__
             case RnEncodeAVX2Float:
                 encode_avx2_float(input, num_elements, output);
                 break;
@@ -545,6 +556,7 @@ double benchmark_path(RunName name, const uint8_t *input, size_t num_bytes, uint
             case RnDecodeAVX2Double:
                 decode_avx2_double(input, num_elements, output);
                 break;
+#endif
             default:
                 ASSERT(!"Unknown name");
                 return .0;
@@ -603,6 +615,7 @@ void test_all_encodings() {
         ASSERT(!"decode_simd_double failed");
     }
 
+#ifdef __AVX2__
     // Check that encode_avx2_float and decode_avx2_float work correctly.
     encode_avx2_float(input, num_elements_float, output);
     if (memcmp(expected_output_float, output, num_bytes)) {
@@ -625,7 +638,7 @@ void test_all_encodings() {
         }
         ASSERT(!"decode_avx2_double failed");
     }
-
+#endif
     free(input);
     free(output);
     free(expected_output_float);
