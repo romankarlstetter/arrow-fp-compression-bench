@@ -515,6 +515,7 @@ double benchmark_path(RunName name, const uint8_t *input, size_t num_bytes, uint
     memcpy(output, input, num_bytes);
 
     double total_time = .0;
+    double min_time = 1e123;
     for (size_t i = 0; i < num_runs; ++i) {
         double t1 = gettime();
         switch(name) {
@@ -564,11 +565,17 @@ double benchmark_path(RunName name, const uint8_t *input, size_t num_bytes, uint
                 return .0;
         }
         double t2 = gettime();
-        total_time += (t2 - t1);
+	const double time_delta = t2-t1;
+        total_time += time_delta;
+	min_time = std::min(min_time, time_delta);
+
     }
     const uint64_t total_bytes_processed = num_runs * num_bytes;
     const double avg_bytes_per_s = total_bytes_processed / total_time;
+    const double max_bytes_per_s = num_bytes / min_time;
     const double avg_gibs_per_s = avg_bytes_per_s / (1024.0 * 1024.0 * 1024.0);
+    const double max_gibs_per_s = max_bytes_per_s / (1024.0 * 1024.0 * 1024.0);
+    return max_gibs_per_s;
     return avg_gibs_per_s;
 }
 
